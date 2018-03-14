@@ -27,7 +27,9 @@ passport.use(
     {
       clientID: keys.googleClientID,
       clientSecret: keys.googleClientSecret,
-      callbackURL: "/auth/google/callback"
+      callbackURL: "/auth/google/callback",
+      proxy: true // in prod since heroku uses a proxy redirection happens on http and not https
+      //to tell google to trust request coming from a proxy we need to set proxy to true
     },
     //This is called after user is authenticated
     (accessToken, refreshToken, profile, done) => {
