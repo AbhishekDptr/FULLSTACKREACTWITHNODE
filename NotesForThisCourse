@@ -1,0 +1,215 @@
+
+                STEPS TO DEPLOY TO HEROKU
+                        INITIAL SETUP
+
+1.Create a heroku account
+2.Download heroku cli 
+3.In the  package.json file specify the engines
+    "engines": {
+    "node": "8.1.1",
+    "npm": "5.0.3"
+  }
+4.Create a .gitignore file and populate with files/folders to ignore
+5.Create a git init in the root directory and commit all your code changes
+    git init
+    git add .
+    git commit -m "My GIT COMMIT MESSAGE"
+6.Login to heroku from cli  
+    heroku Login
+7. create a heroku path to commit to 
+    heroku Create
+8.It will give you a remote git repo address
+9.Configure your remote repository to that address
+    git remote add heroku "git_account_in_step_7"
+
+10. Push ur code to remote repo to auto DEPLOY
+    syntax: git push "remote_repo_name" "git_branch_name"
+    git push heroku master
+11. Once its pushed heroku has web hooks to automatically host it
+    TO view the site type heroku open
+
+
+Repeat steps 5,10 for subsequent commits.
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+            HANDLING OAUTH
+
+Passport JS is used for simplyfying this.
+
+Passport has 2 core modules of importance :
+    1.Passport - General helper for handling oauth with express
+    2.Passport Strategy-Helpers for authenticating with a specific provider.
+
+Every OAuth Provider has a strategy so if your app supports google,facebook,twitter oauths
+then it will has 3 different strategies.
+Strategy can be email/password , Google,Facebook, twitter etc
+    goto PassportJs.org to read about strategies.(There are 300+ strategies)
+
+signup with google oauth (google+ api) and get the clientID and secret
+
+clientID:75193334439-63gsnpr6uo5o04m64nht1vv2m7k39ug3.apps.googleusercontent.com
+secret:m2xed0bhNPDclKOqWmigxXha
+
+clientID - is a public token and can be shared with everyone
+clientSecret - is private and shouldnt be shared with anyone.
+
+
+Configuring Passport for GoogleOauth:
+
+ * The Google authentication strategy authenticates requests by delegating to
+ * Google using the OAuth 2.0 protocol.
+ *
+ * Applications must supply a `verify` callback which accepts an `accessToken`,
+ * `refreshToken` and service-specific `profile`, and then calls the `cb`
+ * callback supplying a `user`, which should be set to `false` if the
+ * credentials are not valid.  If an exception occured, `err` should be set.
+ *
+ * Options:
+ *   - `clientID`      your Google application's client id
+ *   - `clientSecret`  your Google application's client secret
+ *   - `callbackURL`   URL to which Google will redirect the user after granting authorization
+ *
+ * Examples:
+ *
+ *     passport.use(new GoogleStrategy({
+ *         clientID: '123-456-789',
+ *         clientSecret: 'shhh-its-a-secret'
+ *         callbackURL: 'https://www.example.net/auth/google/callback'
+ *       },
+ *       function(accessToken, refreshToken, profile, cb) {
+ *         User.findOrCreate(..., function (err, user) {
+ *           cb(err, user);
+ *         });
+ *       }
+ *     ));
+
+We must give a route path for user to redirect to.
+
+app.get(
+  "/auth/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"]
+  })
+);
+
+When user comes to /auth/google he's gonna be using passport's google strategy and 
+in scope we can define what all info abt user we need such as email,contact info, photos access from 
+his google drive etc.
+
+Google returns a url in this format:
+
+https://accounts.google.com/o/oauth2/v2/auth?
+response_type=code&
+redirect_uri=http%3A%2F%2Flocalhost%3A5000%2Fauth%2Fgoogle%2Fcallback&
+scope=profile%20email&
+client_id=75193334439-63gsnpr6uo5o04m64nht1vv2m7k39ug3.apps.googleusercontent.com
+
+
+Important thing is the redirect_uri because a hacker can easily create his own redirect redirect_uri
+
+TO ensure protection we need to tell google its ok to redirec to that uri.
+
+Once the user accepts the request google returns a code in this format
+http://localhost:5000/auth/google/callback?code=4/AADofcBPtKE3VmvS3TEvrucUpSFAkee2yf2pkMtfXXBjVNRkKoqWmHA4yLWqax10ZcThAv9oohMkcIIErg4ay1M#
+
+now we need to use this code and send to google to get the things mentioned in the scope .
+
+Once code is retured the callback function is called and we get accesstoken and refresh token and profile and done 
+
+
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: keys.googleClientID,
+      clientSecret: keys.googleClientSecret,
+      callbackURL: "/auth/google/callback"
+    },
+    (accessToken, refreshToken, profile, done) => {
+      //this is called when user accepts the prompt from google
+      console.log("access Token:",accessToken);
+      console.log("Refresh Token:",refreshToken)
+      console.log("profile:",profile);
+    }
+  )
+);
+
+
+We can now store the data returned from this into DB to store the credentials for the user.
+
+Authentication Types
+
+When the user goes to some 3rd party provider like google,fb etc and grants permission
+We get some data to uniquely identify the authenticated user.
+How we choose to store and use the data defines the various authentication Types
+
+Cookie Based: Here we store the user info in the browser cookie and once stored 
+    the browser will pass that cookie to all subsequent requests.
+Cookie based is really easy but can have issues like session hijacking.
+
+JWT: JSON web token : Stores data as json objects and passes them around for authenticated users.
+There are many other such types . Read up on that ...
+
+
+in case of google profile we have a unique field called id which is generated by google for each user
+SO we need to store id property frm profile and save it in Cookie /JWT etc
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    USING MONGO DB WITH MONGOOSE
+
+goto mlabs.com and create an account and create a new DB .
+Add DB user under the Users Tab 
+
+Mongoose is a wrapper to work with mongo. Mongoose is optional same as express is optional to node
+Mongoose creates a ModelClass for each collection.
+Each record in the mongo db will be accesible from mongoose as an modelclass instance.
+
+you'll get a uri to connect .Use Mongoose.connect to connect to the mongodb
+
+
+Although Mongo is schemeless and each record can be unique in its schema
+but mongoose requires a schema and it is exposed as part of {Schema} from mongoose
+
+to enable cookie support in express we need cookie-session
+to make passport use cookies for authentication use:
+    app.use(passport.initialize());
+    app.use(passport.session());
+
+now passport will automatically serialize and deserialize data into request object called req.user
+
+
+**************************************************************************
+
+
+        Using Create React App will give us a set of files for react. Delete everything except the registerServiceWorker.js file
+    
+    Our front end will have 2 file
+        index.js  - Data Layer control (Redux)
+
+        App.js - Rendering layer control (React & Router)
+**************************************************************************
+For routing the browser gives us <a> anchor tag
+In React we have <Link> tag which works with React-Router-dom.
+
+***************************************************************************
+                            SOME GENERAL RULES OF BILLING
+***************************************************************************
+We are bad at security
+    Never:
+        Accept raw credit card numbers
+        Store credit card numbers
+    ALways: Use and outside payment provider
+
+    Billing is Hard!
+        Possible to avoid montly payment/multiple plans?
+        Fraud and chargebacks are a pain .
+***************************************************************************
+***************************************************************************
+    we are using react-stripe-checkout for this.
+
+    for managing keys in react app using create react app we need to create files
+        .env.development and .env.production in the client root folder and
+        by convention have to name them with REACT_APP_<MyKeyName>
+
+    
