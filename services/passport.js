@@ -32,19 +32,17 @@ passport.use(
       //to tell google to trust request coming from a proxy we need to set proxy to true
     },
     //This is called after user is authenticated
-    (accessToken, refreshToken, profile, done) => {
-      User.findOne({ googleId: profile.id }).then(existingUser => {
-        if (existingUser) {
-          //already user exists
-          // we need to tell passport we are done fro this operation
-          done(null, existingUser); // first arg is  error So since user already exists we dont have any error
-        } else {
-          //create new user .save is needed to create the record in DB
-          new User({ googleId: profile.id })
-            .save() //returns a promise so need to chain with then
-            .then(user => done(null, user));
-        }
-      });
+    async (accessToken, refreshToken, profile, done) => {
+      const existingUser = await User.findOne({ googleId: profile.id });
+      if (existingUser) {
+        //already user exists
+        // we need to tell passport we are done fro this operation
+        done(null, existingUser); // first arg is  error So since user already exists we dont have any error
+      } else {
+        //create new user .save is needed to create the record in DB
+        const user = await new User({ googleId: profile.id }).save(); //returns a promise so need to chain with then
+        done(null, user);
+      }
     }
   )
 );

@@ -15,9 +15,15 @@ module.exports = app => {
 
   //Once user confirms the access from google google returns a code and the
   //below route handler will allow passport to get the user details
-  //once user accepts the callback function is called
+  //once user accepts.., the callback function is called
 
-  app.get("/auth/google/callback", passport.authenticate("google"));
+  app.get(
+    "/auth/google/callback",
+    passport.authenticate("google"),
+    (req, res) => {
+      res.redirect("/surveys");
+    }
+  );
 
   app.get("/api/current_user", (req, res) => {
     res.send(req.user);
@@ -25,6 +31,6 @@ module.exports = app => {
 
   app.get("/api/logout", (req, res) => {
     req.logout(); // this is built in feature of passport
-    res.send(req.user);
+    res.redirect("/");
   });
 };
